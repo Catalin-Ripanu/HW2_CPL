@@ -13,7 +13,7 @@ You should also install SPIM via CLI if you're gonna use tester.sh (note that th
 
 For testing it yourself, simply create a file in cool/compiler directory with your COOL program and pass its Path from Content Root to Compiler standard input (see [3]). It should output the equivalent MIPS code.
 
-Finally, you shall introduce this code into SPIM for validating the results.
+Finally, you shall introduce this code into SPIM for results validation.
 
 Note that the last test is failing, so there might be some hidden small bugs when compiling complex COOL programs.
 
