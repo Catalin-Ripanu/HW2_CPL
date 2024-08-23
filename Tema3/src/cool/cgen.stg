@@ -1,0 +1,371 @@
+sequence(e) ::= "<e; separator=\"\n\">"
+sequenceSpaced(e) ::= "<e; separator=\"\n\n\">"
+
+program(constantStrings, constantInts, nameTab, objTab, protObj, dispTab, init, func) ::= <<
+    .data
+    .align  2
+    .globl  class_nameTab
+    .globl  Int_protObj
+    .globl  String_protObj
+    .globl  bool_const0
+    .globl  bool_const1
+    .globl  Main_protObj
+    .globl  _int_tag
+    .globl  _string_tag
+    .globl  _bool_tag
+_int_tag:
+    .word   2
+_string_tag:
+    .word   3
+_bool_tag:
+    .word   4
+<constantStrings>
+<constantInts>
+bool_const0:
+    .word   4
+    .word   4
+    .word   Bool_dispTab
+    .word   0
+bool_const1:
+    .word   4
+    .word   4
+    .word   Bool_dispTab
+    .word   1
+class_nameTab:
+<nameTab>
+class_objTab:
+<objTab>
+Object_protObj:
+    .word   0
+    .word   3
+    .word   Object_dispTab
+IO_protObj:
+    .word   1
+    .word   3
+    .word   IO_dispTab
+Int_protObj:
+    .word   2
+    .word   4
+    .word   Int_dispTab
+    .word   0
+String_protObj:
+    .word   3
+    .word   5
+    .word   String_dispTab
+    .word   int_const0
+    .asciiz ""
+    .align  2
+Bool_protObj:
+    .word   4
+    .word   4
+    .word   Bool_dispTab
+    .word   0
+<protObj>
+<dispTab>
+.globl  heap_start
+heap_start:
+    .word   0
+    .text
+    .globl  Int_init
+    .globl  String_init
+    .globl  Bool_init
+    .globl  Main_init
+    .globl  Main.main
+<init>
+<func>
+>>
+
+string_constant(index,tag,length,int_constant,content) ::= <<
+str_const<index>:
+    .word   <tag>
+    .word   <length>
+    .word   String_dispTab
+    .word   <int_constant>
+    .asciiz "<content>"
+    .align  2>>
+
+int_constant(index,tag,value) ::= <<
+int_const<index>:
+    .word   <tag>
+    .word   4
+    .word   Int_dispTab
+    .word   <value> >>
+
+methodName(funcName) ::= <<
+    .word <funcName> >>
+
+objTabElem(class) ::= <<
+    .word   <class>_protObj
+    .word   <class>_init >>
+
+nameTabElem(strConst) ::= <<
+    .word   <strConst> >>
+
+dispTabElem(classname, methods) ::= <<
+<classname>_dispTab:
+<methods: {
+method|<method>
+}> >>
+
+protObjElem(classname, tag, words, attributes) ::= <<
+<classname>_protObj:
+    .word <tag>
+    .word <words>
+    .word <classname>_dispTab
+<attributes: {
+attribute|<attribute>
+}> >>
+
+attrributeInProtObj(attributeType) ::= <<
+    .word <attributeType> >>
+
+initElem(classname, parentClass, initAttributes) ::= <<
+<classname>_init:
+    addiu   $sp $sp -12
+    sw      $fp 12($sp)
+    sw      $s0 8($sp)
+    sw      $ra 4($sp)
+    addiu   $fp $sp 4
+    move    $s0 $a0
+<if(parentClass)>
+    jal     <parentClass>_init
+<endif>
+<initAttributes: {
+initAttribute|<initAttribute>
+}>    move    $a0 $s0
+    lw      $fp 12($sp)
+    lw      $s0 8($sp)
+    lw      $ra 4($sp)
+    addiu   $sp $sp 12
+    jr      $ra >>
+
+methodDef(methodName,exprs,arguments) ::= <<
+<methodName>:
+    addiu   $sp $sp -12
+    sw      $fp 12($sp)
+    sw      $s0 8($sp)
+    sw      $ra 4($sp)
+    addiu   $fp $sp 4
+    move    $s0 $a0
+<exprs: {
+expr|<expr>
+}>    lw      $fp 12($sp)
+    lw      $s0 8($sp)
+    lw      $ra 4($sp)
+    addiu   $sp $sp 12
+    addiu   $sp $sp <arguments>
+    jr      $ra >>
+
+intStringBoolInstruction(const) ::= <<
+    la      $a0 <const> >>
+
+explicitDispatch(method, idx, filename, line, explicit, atType, params, offset) ::= <<
+<params: {
+param|<param>
+}>    <explicit>
+	bnez    $a0 dispatch<idx>
+	la      $a0 <filename>
+	li      $t1 <line>
+	jal     _dispatch_abort
+dispatch<idx>:
+<if (atType)>
+	la		$t1 <atType>_dispTab
+<else>
+	lw      $t1 8($a0)
+<endif>
+    lw      $t1 <offset>($t1)
+    jalr    $t1 >>
+
+implicitDispatch(method, idx, filename, line, params, offset) ::= <<
+<params: {
+param|<param>
+}>    move    $a0 $s0
+	bnez    $a0 dispatch<idx>
+	la      $a0 <filename>
+	li      $t1 <line>
+	jal     _dispatch_abort
+dispatch<idx>:
+	lw      $t1 8($a0)
+    lw      $t1 <offset>($t1)
+    jalr    $t1 >>
+
+dispatchParam(param) ::= <<
+<param>
+	sw      $a0 0($sp)
+	addiu   $sp $sp -4 >>
+
+block(exprs) ::= <<
+<exprs: {
+expr|<expr>
+}> >>
+
+initializeAttribute(offset,expr) ::= <<
+<expr>
+    sw      $a0 <offset>($s0) >>
+
+initializeLocal(offset,expr) ::= <<
+<expr>
+    sw      $a0 <offset>($fp) >>
+
+loadAttribute(offset) ::= <<
+	lw      $a0 <offset>($s0) >>
+
+loadVar(offset) ::= <<
+	lw		$a0 <offset>($fp) >>
+
+storeAttribute(val, offset) ::= <<
+<val>
+	sw      $a0 <offset>($s0) >>
+
+storeVar(val, offset) ::= <<
+<val>
+	sw		$a0 <offset>($fp) >>
+
+initLet(capacity,locals,body) ::= <<
+	addiu	$sp $sp -<capacity>
+<locals: {
+locals|<locals>
+}>
+<body>
+    addiu $sp $sp <capacity> >>
+
+newObj(className) ::= <<
+    la      $a0 <className>_protObj
+    jal     Object.copy
+    jal     <className>_init >>
+
+newSELFTYPE() ::= <<
+	la		$t1 class_objTab
+	lw		$t2 0($s0)
+	sll		$t2 $t2 3
+	addu	$t1 $t1 $t2
+	sw		$t1 0($sp)
+	addiu	$sp $sp -4
+	lw		$a0 0($t1)
+	jal		Object.copy
+	lw		$t1 4($sp)
+	addiu	$sp $sp 4
+	lw		$t1 4($t1)
+	jalr	$t1
+>>
+
+isvoid(expr, cnt_isvoid) ::= <<
+<expr>
+    move	$t1 $a0
+    la		$a0 bool_const1
+    beqz	$t1 isvoid<cnt_isvoid>
+    la		$a0 bool_const0
+isvoid<cnt_isvoid>:
+>>
+
+equal(expr1, expr2, cnt_equal) ::= <<
+<expr1>
+	sw		$a0 0($sp)
+	addiu	$sp $sp -4
+<expr2>
+	lw		$t1 4($sp)
+	addiu	$sp $sp 4
+	move	$t2 $a0
+	la		$a0 bool_const1
+	beq		$t1 $t2 eq_<cnt_equal>
+	la		$a1 bool_const0
+	jal		equality_test
+eq_<cnt_equal>:
+>>
+
+self() ::= <<
+	move	$a0 $s0
+>>
+
+comp(expr1, expr2, op, cnt_comp) ::= <<
+<expr1>
+	sw		$a0 0($sp)
+	addiu	$sp $sp -4
+<expr2>
+	lw		$t1 4($sp)
+	addiu	$sp $sp 4
+	lw		$t1 12($t1)
+	lw		$t2 12($a0)
+	la		$a0 bool_const1
+	<op>	$t1 $t2 compare_<cnt_comp>
+	la		$a0 bool_const0
+compare_<cnt_comp>:
+>>
+
+case(expr, branches_case, filename, line, cnt_case) ::= <<
+	addiu	$sp $sp -4
+	move	$s0 $a0
+<expr>
+	bnez    $a0 case<cnt_case>
+	la      $a0 <filename>
+	li      $t1 <line>
+	jal     _case_abort2
+case<cnt_case>:
+	sw		$a0 -4($fp)
+	lw		$t1 0($a0)
+<branches_case>
+	lw		$a0 -4($fp)
+	jal		_case_abort
+endcase<cnt_case>:
+	addiu	$sp $sp 4
+>>
+
+case_branch(expr, tag1, tag2, cnt_case, next_idx_case) ::= <<
+	blt		$t1 <tag1> casebranch<next_idx_case>
+	bgt     $t1 <tag2> casebranch<next_idx_case>
+<expr>
+	b		endcase<cnt_case>
+casebranch<next_idx_case>:
+>>
+
+while(cond_while, body_while, cnt_while) ::= <<
+while_<cnt_while>:
+<cond_while>
+	lw		$t1 12($a0)
+	beqz	$t1 end_while_<cnt_while>
+<body_while>
+	b		while_<cnt_while>
+end_while_<cnt_while>:
+	li		$a0 0
+>>
+
+arithmetic(expr1, expr2, op_arithm) ::= <<
+<expr1>
+	sw		$a0 0($sp)
+	addiu	$sp $sp -4
+<expr2>
+	jal		Object.copy
+	lw		$t1 4($sp)
+	addiu	$sp $sp 4
+	lw		$t1 12($t1)
+	lw		$t2 12($a0)
+    <op_arithm>	$t1 $t1 $t2
+	sw		$t1 12($a0)
+>>
+
+not(expr, cnt_not) ::= <<
+<expr>
+	lw		$t1 12($a0)
+	la		$a0 bool_const1
+	beqz	$t1 not_<cnt_not>
+	la		$a0 bool_const0
+not_<cnt_not>:
+>>
+
+neg(expr) ::= <<
+<expr>
+	lw		$t1 12($a0)
+	neg		$t1 $t1
+	sw		$t1 12($a0)
+>>
+
+if(cond, then_if, else_if, cnt_if) ::= <<
+<cond>
+	lw		$t1 12($a0)
+    beqz	$t1 else_<cnt_if>
+<then_if>
+    b		endif_<cnt_if>
+else_<cnt_if>:
+<else_if>
+endif_<cnt_if>:
+>>
