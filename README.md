@@ -5,7 +5,7 @@ To run it, you'll need IntelliJ IDEA [1] in order to load the project (which is 
 
 Project structure:
 1. antlr-4.13.0-complete.jar - This .jar Module needs to be added in Project Structure for being able to import ANTLR necessary implementations.
-2. tester.sh - Script used for running the tests. It also shows the passed and failed tests.
+2. tester.sh - Script used for running the tests. It also shows the passed and failed ones.
 
 This Java Compiler generates code compatible with MIPS architecture. Because MIPS architecture oriented computers are not produced anymore, for testing I've used this simulator [2].
 
