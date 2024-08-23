@@ -1,7 +1,7 @@
 # HW2_CPL
 
 This is the implementation of a COOL Compiler (Lexer, Parser and Code Generation) written in Java.
-To run it, you'll need IntelliJ IDEA [1] in order to load the project (which is ready to be as it is).
+To run it, you'll need IntelliJ IDEA [1] in order to load the project (which is ready to as it is).
 
 Project structure:
 1. antlr-4.13.0-complete.jar - This .jar Module needs to be added in Project Structure for being able to import ANTLR necessary implementations.
